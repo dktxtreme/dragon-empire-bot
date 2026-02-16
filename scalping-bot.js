@@ -11,19 +11,24 @@
 require('dotenv').config();
 const ccxt = require('ccxt');
 const fs = require('fs');
-const http = require('http');
+const express = require('express');
 
 // ═══════════════════════════════════════════════════════════
-// RAILWAY HEALTH CHECK SERVER (Lightweight!)
+// RAILWAY HEALTH CHECK SERVER (Express - Railway Compatible!)
 // ═══════════════════════════════════════════════════════════
 
+const app = express();
 const PORT = process.env.PORT || 3000;
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('🐉 Dragon Empire Scalping Bot is RUNNING! 🔥\n');
+
+app.get('/', (req, res) => {
+  res.send('🐉 Dragon Empire Scalping Bot is RUNNING! 🔥');
 });
 
-server.listen(PORT, () => {
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', bot: 'running', timestamp: new Date().toISOString() });
+});
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Health check server running on port ${PORT}`);
 });
 
