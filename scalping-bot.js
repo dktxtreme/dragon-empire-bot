@@ -1,15 +1,31 @@
 // ═══════════════════════════════════════════════════════════
-// 🐉 DRAGON EMPIRE HOLDINGS - SCALPING BOT V1
+// 🐉 DRAGON EMPIRE HOLDINGS - SCALPING BOT V1.1
 // ═══════════════════════════════════════════════════════════
 // Strategy: Triple Confirmation Entry + Fixed 1.32% Target
 // Position: $200 per trade
 // No Stop Loss - Hold Until Target
+// Railway Compatible (includes minimal health check server)
 // Let it EAT! 🔥
 // ═══════════════════════════════════════════════════════════
 
 require('dotenv').config();
 const ccxt = require('ccxt');
 const fs = require('fs');
+const http = require('http');
+
+// ═══════════════════════════════════════════════════════════
+// RAILWAY HEALTH CHECK SERVER (Lightweight!)
+// ═══════════════════════════════════════════════════════════
+
+const PORT = process.env.PORT || 3000;
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('🐉 Dragon Empire Scalping Bot is RUNNING! 🔥\n');
+});
+
+server.listen(PORT, () => {
+  console.log(`✅ Health check server running on port ${PORT}`);
+});
 
 // ═══════════════════════════════════════════════════════════
 // CONFIGURATION
@@ -350,7 +366,7 @@ function sleep(ms) {
 async function main() {
   console.log('\n');
   console.log('═══════════════════════════════════════════════════════════');
-  console.log('🐉 DRAGON EMPIRE HOLDINGS - SCALPING BOT V1 🐉');
+  console.log('🐉 DRAGON EMPIRE HOLDINGS - SCALPING BOT V1.1 🐉');
   console.log('═══════════════════════════════════════════════════════════');
   console.log('Strategy: Triple Confirmation + Fixed Target');
   console.log('Position: $200 per trade');
@@ -409,3 +425,4 @@ main().catch(error => {
   console.error('💥 FATAL ERROR:', error);
   process.exit(1);
 });
+
