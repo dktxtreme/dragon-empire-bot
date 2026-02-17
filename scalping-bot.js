@@ -81,11 +81,11 @@ const CONFIG = {
   compounding: true,              // Reinvest profits into position size
 
   // Re-entry settings
-  reEntryWaitSeconds: 60,         // Wait 60 seconds after exit
+  reEntryWaitSeconds: 30,         // Wait 30 seconds after exit (was 60s - missed setups during cooldown)
   reEntryRSI: 40,                 // RSI must be < 40 to re-enter
   
   // Timing
-  checkInterval: 7500,            // Check every 7.5 seconds
+  checkInterval: 3000,             // Check every 3 seconds (was 7.5s - too slow for scalping)
   
   // State persistence
   stateFile: './bot-state.json',
@@ -274,12 +274,18 @@ async function checkEntrySignal(state) {
   }
   console.log(`   ✅ Step 2 PASSED: Price moving UP! (+${priceChange.toFixed(3)}%)`);
   
-  // STEP 3: Check MA8 > MA3
-  if (!indicators2.ma8CrossAboveMA3) {
-    console.log(`   ❌ Step 3 FAILED: MA8 (${indicators2.ma8.toFixed(5)}) NOT > MA3 (${indicators2.ma3.toFixed(5)})`);
+  // STEP 3: Check MA8 > MA3 using INITIAL indicators (pre-bounce snapshot)
+  // We use the first reading (indicators) not the second (indicators2) because:
+  // During a sharp V-bounce, MA3 (fast, 3-period) recovers faster than MA8 (slow, 8-period).
+  // By the time we do the 5-second momentum check, MA3 may have already crossed above MA8,
+  // flipping this condition to FALSE and causing us to miss the trade.
+  // The MA check should confirm we're in a dip (MA8 > MA3 = slow above fast = downtrend),
+  // while Step 2 confirms the bounce has started.
+  if (!indicators.ma8CrossAboveMA3) {
+    console.log(`   ❌ Step 3 FAILED: MA8 (${indicators.ma8.toFixed(5)}) NOT > MA3 (${indicators.ma3.toFixed(5)})`);
     return null;
   }
-  console.log(`   ✅ Step 3 PASSED: MA8 > MA3! MOMENTUM CONFIRMED!`);
+  console.log(`   ✅ Step 3 PASSED: MA8 > MA3! DIP STRUCTURE CONFIRMED!`);
   
   // ALL 3 CONDITIONS MET!
   console.log('\n🎯🎯🎯 ALL 3 CONFIRMATIONS MET! ENTERING TRADE! 🎯🎯🎯\n');
@@ -399,7 +405,7 @@ async function checkExit(state) {
       
       saveState(state);
       
-      console.log('🔄 Waiting 60 seconds before looking for re-entry...\n');
+      console.log('🔄 Waiting 30 seconds before looking for re-entry...\n');
     }
     
   } catch (error) {
