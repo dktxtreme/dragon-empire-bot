@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════════
-// 🐉 DRAGON EMPIRE HOLDINGS - SCALPING BOT V1.1
+// 🐉 DRAGON EMPIRE HOLDINGS - SCALPING BOT V1.2
 // ═══════════════════════════════════════════════════════════
 // Strategy: Triple Confirmation Entry + Fixed 1.32% Target
-// Position: $200 per trade
+// Position: $200 base + compounding profits
 // No Stop Loss - Hold Until Target
 // Railway Compatible (includes minimal health check server)
 // Let it EAT! 🔥
@@ -77,6 +77,9 @@ const CONFIG = {
   ma3Period: 3,                   // Fast MA
   ma8Period: 8,                   // Slow MA (MA8 must cross above MA3)
   
+  // Compounding
+  compounding: true,              // Reinvest profits into position size
+
   // Re-entry settings
   reEntryWaitSeconds: 60,         // Wait 60 seconds after exit
   reEntryRSI: 40,                 // RSI must be < 40 to re-enter
@@ -120,6 +123,7 @@ function loadState() {
     entryPrice: 0,
     targetPrice: 0,
     amount: 0,
+    positionSizeUSD: 0,
     buyOrderId: null,
     sellOrderId: null,
     lastExitTime: 0,
@@ -135,6 +139,17 @@ function saveState(state) {
   } catch (error) {
     console.error('❌ Error saving state:', error.message);
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// POSITION SIZING (COMPOUNDING)
+// ═══════════════════════════════════════════════════════════
+
+function getPositionSize(state) {
+  if (CONFIG.compounding && state.totalProfit > 0) {
+    return CONFIG.positionSizeUSD + state.totalProfit;
+  }
+  return CONFIG.positionSizeUSD;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -284,17 +299,18 @@ async function checkEntrySignal(state) {
 async function enterTrade(signal, state) {
   try {
     const entryPrice = signal.entryPrice;
-    const amount = CONFIG.positionSizeUSD / entryPrice;
+    const positionSize = getPositionSize(state);
+    const amount = positionSize / entryPrice;
     const targetPrice = entryPrice * (1 + CONFIG.grossTarget);
-    
+
     console.log('═══════════════════════════════════════════════════════════');
     console.log('🚀 ENTERING TRADE');
     console.log('═══════════════════════════════════════════════════════════');
     console.log(`Entry Price: $${entryPrice.toFixed(5)}`);
     console.log(`Amount: ${amount.toFixed(2)} XRP`);
-    console.log(`Position Size: $${CONFIG.positionSizeUSD}`);
+    console.log(`Position Size: $${positionSize.toFixed(2)}${CONFIG.compounding && state.totalProfit > 0 ? ` (base $${CONFIG.positionSizeUSD} + $${state.totalProfit.toFixed(2)} profit)` : ''}`);
     console.log(`Target Price: $${targetPrice.toFixed(5)} (+${(CONFIG.grossTarget * 100).toFixed(2)}%)`);
-    console.log(`Expected Profit: $${(CONFIG.positionSizeUSD * CONFIG.targetNetProfit).toFixed(2)} (net)`);
+    console.log(`Expected Profit: $${(positionSize * CONFIG.targetNetProfit).toFixed(2)} (net)`);
     console.log(`RSI: ${signal.rsi.toFixed(2)}`);
     console.log(`MA8 > MA3: ${signal.ma8.toFixed(5)} > ${signal.ma3.toFixed(5)}`);
     console.log('═══════════════════════════════════════════════════════════');
@@ -325,6 +341,7 @@ async function enterTrade(signal, state) {
     state.entryPrice = entryPrice;
     state.targetPrice = targetPrice;
     state.amount = amount;
+    state.positionSizeUSD = positionSize;
     state.buyOrderId = buyOrder.id;
     state.sellOrderId = sellOrder.id;
     state.totalTrades++;
@@ -352,14 +369,18 @@ async function checkExit(state) {
     
     if (!sellOrderStillOpen) {
       // Sell order filled! Target hit!
-      const profit = CONFIG.positionSizeUSD * CONFIG.targetNetProfit;
+      const tradePosSize = state.positionSizeUSD || CONFIG.positionSizeUSD;
+      const profit = tradePosSize * CONFIG.targetNetProfit;
       
       console.log('\n═══════════════════════════════════════════════════════════');
       console.log('💰💰💰 TARGET HIT! TRADE COMPLETE! 💰💰💰');
       console.log('═══════════════════════════════════════════════════════════');
       console.log(`Entry: $${state.entryPrice.toFixed(5)}`);
       console.log(`Exit: $${state.targetPrice.toFixed(5)}`);
+      console.log(`Position Size: $${tradePosSize.toFixed(2)}`);
       console.log(`Profit: $${profit.toFixed(2)} (+${(CONFIG.targetNetProfit * 100).toFixed(2)}% net)`);
+      console.log(`Total Profit: $${(state.totalProfit + profit).toFixed(2)}`);
+      console.log(`Next Position: $${CONFIG.compounding ? (CONFIG.positionSizeUSD + state.totalProfit + profit).toFixed(2) : CONFIG.positionSizeUSD.toFixed(2)}`);
       console.log(`Total Trades: ${state.totalTrades}`);
       console.log(`Successful: ${state.successfulTrades + 1}`);
       console.log('═══════════════════════════════════════════════════════════\n');
@@ -372,6 +393,7 @@ async function checkExit(state) {
       state.entryPrice = 0;
       state.targetPrice = 0;
       state.amount = 0;
+      state.positionSizeUSD = 0;
       state.buyOrderId = null;
       state.sellOrderId = null;
       
@@ -396,13 +418,14 @@ function sleep(ms) {
 async function main() {
   console.log('\n');
   console.log('═══════════════════════════════════════════════════════════');
-  console.log('🐉 DRAGON EMPIRE HOLDINGS - SCALPING BOT V1.1 🐉');
+  console.log('🐉 DRAGON EMPIRE HOLDINGS - SCALPING BOT V1.2 🐉');
   console.log('═══════════════════════════════════════════════════════════');
   console.log('Strategy: Triple Confirmation + Fixed Target');
-  console.log('Position: $200 per trade');
+  console.log(`Position: $${CONFIG.positionSizeUSD} base${CONFIG.compounding ? ' + compounding profits' : ''}`);
   console.log('Target: 1.32% gross (1% net after fees)');
   console.log('Entry: RSI < 35 + Price Up + MA8 > MA3');
   console.log('Exit: Fixed target (no stop loss)');
+  console.log(`Compounding: ${CONFIG.compounding ? 'ON - profits reinvested' : 'OFF - fixed position size'}`);
   console.log('═══════════════════════════════════════════════════════════');
   console.log('🔥 LET IT EAT! 🔥');
   console.log('═══════════════════════════════════════════════════════════\n');
