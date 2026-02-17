@@ -14,6 +14,17 @@ const fs = require('fs');
 const express = require('express');
 
 // ═══════════════════════════════════════════════════════════
+// BOT STATUS (shared between health check and bot loop)
+// ═══════════════════════════════════════════════════════════
+
+let botStatus = {
+  running: false,
+  lastCheck: null,
+  error: null,
+  hasPosition: false,
+};
+
+// ═══════════════════════════════════════════════════════════
 // RAILWAY HEALTH CHECK SERVER (Express - Railway Compatible!)
 // ═══════════════════════════════════════════════════════════
 
@@ -25,12 +36,26 @@ app.get('/', (req, res) => {
 });
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', bot: 'running', timestamp: new Date().toISOString() });
+  res.json({
+    status: botStatus.running ? 'ok' : 'starting',
+    bot: botStatus.running ? 'running' : 'initializing',
+    lastCheck: botStatus.lastCheck,
+    error: botStatus.error,
+    hasPosition: botStatus.hasPosition,
+    timestamp: new Date().toISOString(),
+  });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Health check server running on port ${PORT}`);
-});
+function startHealthServer() {
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ Health check server running on port ${PORT}`);
+  });
+
+  server.on('error', (err) => {
+    console.error(`⚠️ Health check server failed to start: ${err.message}`);
+    console.log('🐉 Bot will continue running without health check server.');
+  });
+}
 
 // ═══════════════════════════════════════════════════════════
 // CONFIGURATION
@@ -399,7 +424,7 @@ async function main() {
     try {
       const timestamp = new Date().toISOString();
       console.log(`[${timestamp}] 🔍 Checking...`);
-      
+
       if (state.hasPosition) {
         // Check if target hit
         await checkExit(state);
@@ -410,12 +435,19 @@ async function main() {
           await enterTrade(signal, state);
         }
       }
-      
+
+      // Update bot status
+      botStatus.running = true;
+      botStatus.lastCheck = timestamp;
+      botStatus.error = null;
+      botStatus.hasPosition = state.hasPosition;
+
       // Wait before next check
       await sleep(CONFIG.checkInterval);
-      
+
     } catch (error) {
       console.error('\n❌ ERROR in main loop:', error.message);
+      botStatus.error = error.message;
       console.log('⏳ Waiting 60 seconds before retry...\n');
       await sleep(60000);
     }
@@ -426,7 +458,19 @@ async function main() {
 // START BOT
 // ═══════════════════════════════════════════════════════════
 
+// Start health check server first (non-blocking, won't crash bot if it fails)
+startHealthServer();
+
+// Start bot loop (retries internally, never calls process.exit)
 main().catch(error => {
   console.error('💥 FATAL ERROR:', error);
-  process.exit(1);
+  botStatus.error = error.message;
+  botStatus.running = false;
+  console.log('🔄 Restarting bot in 30 seconds...');
+  setTimeout(() => {
+    main().catch(err => {
+      console.error('💥 FATAL ERROR on restart:', err);
+      botStatus.error = err.message;
+    });
+  }, 30000);
 });
