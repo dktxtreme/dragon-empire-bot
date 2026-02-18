@@ -85,7 +85,7 @@ const CONFIG = {
   reEntryRSI: 40,                 // RSI must be < 40 to re-enter
   
   // Timing
-  checkInterval: 3000,             // Check every 3 seconds (was 7.5s - too slow for scalping)
+  checkInterval: 500,              // Check every 0.5 seconds
   
   // State persistence
   stateFile: './bot-state.json',
