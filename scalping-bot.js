@@ -96,8 +96,8 @@ const CONFIG = {
 // ═══════════════════════════════════════════════════════════
 
 const exchange = new ccxt.kraken({
-  apiKey: process.env.KRAKEN_API_KEY,
-  apiSecret: process.env.KRAKEN_PRIVATE_KEY,
+  apiKey: process.env.CLAUDE_API_KEY,
+  apiSecret: process.env.CLAUDE_PRIVATE_KEY,
   enableRateLimit: true,
   options: {
     defaultType: 'spot',
