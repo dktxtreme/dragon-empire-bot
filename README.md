@@ -8,7 +8,7 @@
 
 ### Entry Conditions (ALL 3 MUST BE MET):
 1. **RSI < 35** - Oversold identified
-2. **Price Moving Up** - 5 second momentum check confirms bounce
+2. **Price Moving Up** - .5 second momentum check confirms bounce
 3. **MA8 > MA3** - Sustained momentum confirmed
 
 ### Exit Condition:
