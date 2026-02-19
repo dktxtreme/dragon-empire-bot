@@ -9,7 +9,14 @@
 // ═══════════════════════════════════════════════════════════
 
 require('dotenv').config();
-// Discord alert function
+const ccxt = require('ccxt');
+const fs = require('fs');
+const express = require('express');
+
+// ═══════════════════════════════════════════════════════════
+// DISCORD ALERT FUNCTION
+// ═══════════════════════════════════════════════════════════
+
 async function sendDiscordAlert(message) {
   const webhookUrl = process.env.DISCORD_WEBHOOK;
   if (!webhookUrl) return;
@@ -26,9 +33,6 @@ async function sendDiscordAlert(message) {
     console.error('Discord alert failed:', e.message);
   }
 }
-const ccxt = require('ccxt');
-const fs = require('fs');
-const express = require('express');
 
 // ═══════════════════════════════════════════════════════════
 // BOT STATUS (shared between health check and bot loop)
@@ -90,7 +94,7 @@ const CONFIG = {
   
   // Triple confirmation entry
   entryRSI: 35,                   // RSI must be < 35
-  momentumCheckSeconds: 0.5,        // Check price movement over 0.5 seconds
+  momentumCheckSeconds: 0.5,      // Check price movement over 0.5 seconds
   ma3Period: 3,                   // Fast MA
   ma8Period: 8,                   // Slow MA (MA8 must cross above MA3)
   
@@ -102,7 +106,7 @@ const CONFIG = {
   reEntryRSI: 40,                 // RSI must be < 40 to re-enter
   
   // Timing
-  checkInterval: 500,              // Check every 0.5 seconds
+  checkInterval: 500,             // Check every 0.5 seconds
   
   // State persistence
   stateFile: './bot-state.json',
@@ -114,7 +118,7 @@ const CONFIG = {
 
 const exchange = new ccxt.kraken({
   apiKey: process.env.CLAUDE_API_KEY,
-  Secret: process.env.CLAUDE_PASS,
+  secret: process.env.CLAUDE_PASS,
   enableRateLimit: true,
   options: {
     defaultType: 'spot',
@@ -346,7 +350,9 @@ async function enterTrade(signal, state) {
       entryPrice
     );
     console.log(`✅ Buy order placed! ID: ${buyOrder.id}`);
-    await sendDiscordAlert('✅ TRADE EXECUTED!\nAmount: ${xrpAmount.toFixed(4)} XRP\nENTRY: $${currentPrice.toFixed(4)}\nTarget: +1.32%');
+    
+    // Send Discord alert for trade entry
+    await sendDiscordAlert(`✅ TRADE EXECUTED!\nAmount: ${amount.toFixed(2)} XRP\nEntry: $${entryPrice.toFixed(5)}\nTarget: $${targetPrice.toFixed(5)} (+1.32%)`);
     
     // Wait a moment for buy to potentially fill
     await sleep(2000);
@@ -377,8 +383,8 @@ async function enterTrade(signal, state) {
     
   } catch (error) {
     console.error('❌ ERROR entering trade:', error.message);
+    await sendDiscordAlert(`❌ ERROR entering trade: ${error.message}`);
     throw error;
-    await sendDiscordAlert('X ERROR entering trade: ${e.message}');
   }
 }
 
@@ -409,6 +415,9 @@ async function checkExit(state) {
       console.log(`Total Trades: ${state.totalTrades}`);
       console.log(`Successful: ${state.successfulTrades + 1}`);
       console.log('═══════════════════════════════════════════════════════════\n');
+      
+      // Send Discord alert for successful exit
+      await sendDiscordAlert(`💰 TARGET HIT!\nProfit: $${profit.toFixed(2)} (+${(CONFIG.targetNetProfit * 100).toFixed(2)}%)\nTotal Profit: $${(state.totalProfit + profit).toFixed(2)}\nNext Position: $${CONFIG.compounding ? (CONFIG.positionSizeUSD + state.totalProfit + profit).toFixed(2) : CONFIG.positionSizeUSD.toFixed(2)}`);
       
       // Update state
       state.hasPosition = false;
@@ -495,6 +504,7 @@ async function main() {
 
     } catch (error) {
       console.error('\n❌ ERROR in main loop:', error.message);
+      await sendDiscordAlert(`⚠️ Main loop error: ${error.message}`);
       botStatus.error = error.message;
       console.log('⏳ Waiting 60 seconds before retry...\n');
       await sleep(60000);
