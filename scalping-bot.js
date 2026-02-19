@@ -9,6 +9,23 @@
 // ═══════════════════════════════════════════════════════════
 
 require('dotenv').config();
+// Discord alert function
+async function sendDiscordAlert(message) {
+  const webhookUrl = process.env.DISCORD_WEBHOOK;
+  if (!webhookUrl) return;
+  
+  try {
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content: `🐉 **DRAGON EMPIRE BOT**\n${message}`
+      })
+    });
+  } catch (e) {
+    console.error('Discord alert failed:', e.message);
+  }
+}
 const ccxt = require('ccxt');
 const fs = require('fs');
 const express = require('express');
@@ -360,6 +377,7 @@ async function enterTrade(signal, state) {
   } catch (error) {
     console.error('❌ ERROR entering trade:', error.message);
     throw error;
+    await sendDiscordAlert('X ERROR entering trade: ${e.message}');
   }
 }
 
