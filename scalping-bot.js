@@ -5,6 +5,7 @@
 // Position: $200 base + compounding profits
 // No Stop Loss - Hold Until Target
 // Railway Compatible (includes minimal health check server)
+// Discord Alerts Enabled
 // Let it EAT! 🔥
 // ═══════════════════════════════════════════════════════════
 
@@ -296,12 +297,6 @@ async function checkEntrySignal(state) {
   console.log(`   ✅ Step 2 PASSED: Price moving UP! (+${priceChange.toFixed(3)}%)`);
   
   // STEP 3: Check MA8 > MA3 using INITIAL indicators (pre-bounce snapshot)
-  // We use the first reading (indicators) not the second (indicators2) because:
-  // During a sharp V-bounce, MA3 (fast, 3-period) recovers faster than MA8 (slow, 8-period).
-  // By the time we do the 5-second momentum check, MA3 may have already crossed above MA8,
-  // flipping this condition to FALSE and causing us to miss the trade.
-  // The MA check should confirm we're in a dip (MA8 > MA3 = slow above fast = downtrend),
-  // while Step 2 confirms the bounce has started.
   if (!indicators.ma8CrossAboveMA3) {
     console.log(`   ❌ Step 3 FAILED: MA8 (${indicators.ma8.toFixed(5)}) NOT > MA3 (${indicators.ma3.toFixed(5)})`);
     return null;
@@ -352,7 +347,7 @@ async function enterTrade(signal, state) {
     console.log(`✅ Buy order placed! ID: ${buyOrder.id}`);
     
     // Send Discord alert for trade entry
-    await sendDiscordAlert(`✅ TRADE EXECUTED!\nAmount: ${amount.toFixed(2)} XRP\nEntry: $${entryPrice.toFixed(5)}\nTarget: $${targetPrice.toFixed(5)} (+1.32%)`);
+    await sendDiscordAlert(`✅ **TRADE EXECUTED!**\n\n💰 Amount: ${amount.toFixed(2)} XRP\n📊 Entry: $${entryPrice.toFixed(5)}\n🎯 Target: $${targetPrice.toFixed(5)} (+1.32%)\n📈 RSI: ${signal.rsi.toFixed(2)}`);
     
     // Wait a moment for buy to potentially fill
     await sleep(2000);
@@ -383,7 +378,7 @@ async function enterTrade(signal, state) {
     
   } catch (error) {
     console.error('❌ ERROR entering trade:', error.message);
-    await sendDiscordAlert(`❌ ERROR entering trade: ${error.message}`);
+    await sendDiscordAlert(`❌ **ERROR entering trade:**\n${error.message}`);
     throw error;
   }
 }
@@ -417,7 +412,7 @@ async function checkExit(state) {
       console.log('═══════════════════════════════════════════════════════════\n');
       
       // Send Discord alert for successful exit
-      await sendDiscordAlert(`💰 TARGET HIT!\nProfit: $${profit.toFixed(2)} (+${(CONFIG.targetNetProfit * 100).toFixed(2)}%)\nTotal Profit: $${(state.totalProfit + profit).toFixed(2)}\nNext Position: $${CONFIG.compounding ? (CONFIG.positionSizeUSD + state.totalProfit + profit).toFixed(2) : CONFIG.positionSizeUSD.toFixed(2)}`);
+      await sendDiscordAlert(`💰 **TARGET HIT!**\n\n✅ Profit: $${profit.toFixed(2)} (+${(CONFIG.targetNetProfit * 100).toFixed(2)}%)\n📊 Total Profit: $${(state.totalProfit + profit).toFixed(2)}\n💎 Next Position: $${CONFIG.compounding ? (CONFIG.positionSizeUSD + state.totalProfit + profit).toFixed(2) : CONFIG.positionSizeUSD.toFixed(2)}`);
       
       // Update state
       state.hasPosition = false;
@@ -476,8 +471,8 @@ async function main() {
     console.log('📊 No existing position. Ready to trade!\n');
   }
   
- // Send startup notification to Discord
-  await sendDiscordAlert(`🐉 **DRAGON EMPIRE BOT STARTED**\n\n✅ Status: Online and hunting\n🎯 Waiting for: RSI < 35\n💰 Position: ${state.hasPosition ? 'Active' : 'None'}\n⏰ Time: ${new Date().toISOString()}\n\nLet it EAT! 🔥`);
+  // Send startup notification to Discord
+  await sendDiscordAlert(`🐉 **DRAGON EMPIRE BOT STARTED**\n\n✅ Status: Online and hunting\n🎯 Waiting for: RSI < 35\n💰 Position: ${state.hasPosition ? 'Active' : 'None'}\n⏰ Time: ${new Date().toISOString()}\n\n🔥 Let it EAT! 🔥`);
   
   // Main loop
   while (true) {
@@ -507,7 +502,7 @@ async function main() {
 
     } catch (error) {
       console.error('\n❌ ERROR in main loop:', error.message);
-      await sendDiscordAlert(`⚠️ Main loop error: ${error.message}`);
+      await sendDiscordAlert(`⚠️ **Main loop error:**\n${error.message}`);
       botStatus.error = error.message;
       console.log('⏳ Waiting 60 seconds before retry...\n');
       await sleep(60000);
