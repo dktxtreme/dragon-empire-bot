@@ -476,6 +476,9 @@ async function main() {
     console.log('📊 No existing position. Ready to trade!\n');
   }
   
+  // Send startup notification
+await sendDiscordAlert(`🐉 Dragon Empire Bot Started!\nTime: ${new Date().toISOString()}\nStatus: Hunting for RSI < 35\nWaiting for entry signal... 🎯`);
+  
   // Main loop
   while (true) {
     try {
