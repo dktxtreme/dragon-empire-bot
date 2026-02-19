@@ -346,6 +346,7 @@ async function enterTrade(signal, state) {
       entryPrice
     );
     console.log(`✅ Buy order placed! ID: ${buyOrder.id}`);
+    await sendDiscordAlert('✅ TRADE EXECUTED!\nAmount: ${xrpAmount.toFixed(4)} XRP\nENTRY: $${currentPrice.toFixed(4)}\nTarget: +1.32%');
     
     // Wait a moment for buy to potentially fill
     await sleep(2000);
