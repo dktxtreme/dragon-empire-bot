@@ -73,7 +73,7 @@ const CONFIG = {
   
   // Triple confirmation entry
   entryRSI: 35,                   // RSI must be < 35
-  momentumCheckSeconds: 5,        // Check price movement over 5 seconds
+  momentumCheckSeconds: 0.5,        // Check price movement over 0.5 seconds
   ma3Period: 3,                   // Fast MA
   ma8Period: 8,                   // Slow MA (MA8 must cross above MA3)
   
