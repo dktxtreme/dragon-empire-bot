@@ -1,11 +1,12 @@
 // ═══════════════════════════════════════════════════════════
-// 🐉 DRAGON EMPIRE HOLDINGS - SCALPING BOT V1.2
+// 🐉 DRAGON EMPIRE HOLDINGS - SCALPING BOT V1.3
 // ═══════════════════════════════════════════════════════════
 // Strategy: Triple Confirmation Entry + Fixed 1.32% Target
 // Position: $200 base + compounding profits
 // No Stop Loss - Hold Until Target
 // Railway Compatible (includes minimal health check server)
 // Discord Alerts Enabled
+// NOW USING EMA (not MA) - FASTER REACTIONS! ⚡
 // Let it EAT! 🔥
 // ═══════════════════════════════════════════════════════════
 
@@ -54,7 +55,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
-  res.send('🐉 Dragon Empire Scalping Bot is RUNNING! 🔥');
+  res.send('🐉 Dragon Empire Scalping Bot V1.3 - EMA POWERED! ⚡');
 });
 
 app.get('/health', (req, res) => {
@@ -96,14 +97,14 @@ const CONFIG = {
   // Triple confirmation entry
   entryRSI: 35,                   // RSI must be < 35
   momentumCheckSeconds: 0.5,      // Check price movement over 0.5 seconds
-  ma3Period: 3,                   // Fast MA
-  ma8Period: 8,                   // Slow MA (MA8 must cross above MA3)
+  ema3Period: 3,                  // Fast EMA (was MA3)
+  ema8Period: 8,                  // Slow EMA (was MA8)
   
   // Compounding
   compounding: true,              // Reinvest profits into position size
 
   // Re-entry settings
-  reEntryWaitSeconds: 30,         // Wait 30 seconds after exit (was 60s - missed setups during cooldown)
+  reEntryWaitSeconds: 30,         // Wait 30 seconds after exit
   reEntryRSI: 40,                 // RSI must be < 40 to re-enter
   
   // Timing
@@ -217,14 +218,24 @@ function calculateRSI(closes, period = 14) {
   return rsi;
 }
 
-function calculateMA(closes, period) {
+function calculateEMA(closes, period) {
   if (closes.length < period) {
-    throw new Error('Not enough data for MA calculation');
+    throw new Error('Not enough data for EMA calculation');
   }
   
-  const slice = closes.slice(-period);
-  const sum = slice.reduce((a, b) => a + b, 0);
-  return sum / period;
+  // EMA multiplier: 2 / (period + 1)
+  const multiplier = 2 / (period + 1);
+  
+  // Start with SMA (Simple Moving Average) for first EMA value
+  let ema = closes.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  
+  // Calculate EMA for remaining values
+  // EMA = (Close - EMA(previous)) × multiplier + EMA(previous)
+  for (let i = period; i < closes.length; i++) {
+    ema = (closes[i] - ema) * multiplier + ema;
+  }
+  
+  return ema;
 }
 
 async function getIndicators() {
@@ -232,16 +243,16 @@ async function getIndicators() {
   const closes = ohlcv.map(candle => candle[4]); // Close prices
   
   const rsi = calculateRSI(closes, 14);
-  const ma3 = calculateMA(closes, CONFIG.ma3Period);
-  const ma8 = calculateMA(closes, CONFIG.ma8Period);
+  const ema3 = calculateEMA(closes, CONFIG.ema3Period);
+  const ema8 = calculateEMA(closes, CONFIG.ema8Period);
   const currentPrice = closes[closes.length - 1];
   
   return {
     rsi,
-    ma3,
-    ma8,
+    ema3,
+    ema8,
     currentPrice,
-    ma8CrossAboveMA3: ma8 > ma3,
+    ema8CrossAboveEma3: ema8 > ema3,
   };
 }
 
@@ -267,8 +278,8 @@ async function checkEntrySignal(state) {
   // STEP 1: Check RSI < 35
   const indicators = await getIndicators();
   console.log(`   RSI: ${indicators.rsi.toFixed(2)}`);
-  console.log(`   MA3: ${indicators.ma3.toFixed(5)}`);
-  console.log(`   MA8: ${indicators.ma8.toFixed(5)}`);
+  console.log(`   EMA3: ${indicators.ema3.toFixed(5)}`);
+  console.log(`   EMA8: ${indicators.ema8.toFixed(5)}`);
   console.log(`   Price: $${indicators.currentPrice.toFixed(5)}`);
   
   if (indicators.rsi >= CONFIG.entryRSI) {
@@ -277,7 +288,7 @@ async function checkEntrySignal(state) {
   }
   console.log(`   ✅ Step 1 PASSED: RSI ${indicators.rsi.toFixed(2)} < ${CONFIG.entryRSI} (OVERSOLD!)`);
   
-  // STEP 2: Check price momentum (5 seconds)
+  // STEP 2: Check price momentum (0.5 seconds)
   const price1 = indicators.currentPrice;
   console.log(`   ⏳ Waiting ${CONFIG.momentumCheckSeconds} seconds to check momentum...`);
   await sleep(CONFIG.momentumCheckSeconds * 1000);
@@ -296,12 +307,13 @@ async function checkEntrySignal(state) {
   }
   console.log(`   ✅ Step 2 PASSED: Price moving UP! (+${priceChange.toFixed(3)}%)`);
   
-  // STEP 3: Check MA8 > MA3 using INITIAL indicators (pre-bounce snapshot)
-  if (!indicators.ma8CrossAboveMA3) {
-    console.log(`   ❌ Step 3 FAILED: MA8 (${indicators.ma8.toFixed(5)}) NOT > MA3 (${indicators.ma3.toFixed(5)})`);
+  // STEP 3: Check EMA8 > EMA3 using INITIAL indicators (pre-bounce snapshot)
+  // Using EMA now for FASTER reaction to price changes!
+  if (!indicators.ema8CrossAboveEma3) {
+    console.log(`   ❌ Step 3 FAILED: EMA8 (${indicators.ema8.toFixed(5)}) NOT > EMA3 (${indicators.ema3.toFixed(5)})`);
     return null;
   }
-  console.log(`   ✅ Step 3 PASSED: MA8 > MA3! DIP STRUCTURE CONFIRMED!`);
+  console.log(`   ✅ Step 3 PASSED: EMA8 > EMA3! DIP STRUCTURE CONFIRMED!`);
   
   // ALL 3 CONDITIONS MET!
   console.log('\n🎯🎯🎯 ALL 3 CONFIRMATIONS MET! ENTERING TRADE! 🎯🎯🎯\n');
@@ -309,8 +321,8 @@ async function checkEntrySignal(state) {
   return {
     entryPrice: price2,
     rsi: indicators2.rsi,
-    ma3: indicators2.ma3,
-    ma8: indicators2.ma8,
+    ema3: indicators2.ema3,
+    ema8: indicators2.ema8,
   };
 }
 
@@ -334,7 +346,7 @@ async function enterTrade(signal, state) {
     console.log(`Target Price: $${targetPrice.toFixed(5)} (+${(CONFIG.grossTarget * 100).toFixed(2)}%)`);
     console.log(`Expected Profit: $${(positionSize * CONFIG.targetNetProfit).toFixed(2)} (net)`);
     console.log(`RSI: ${signal.rsi.toFixed(2)}`);
-    console.log(`MA8 > MA3: ${signal.ma8.toFixed(5)} > ${signal.ma3.toFixed(5)}`);
+    console.log(`EMA8 > EMA3: ${signal.ema8.toFixed(5)} > ${signal.ema3.toFixed(5)}`);
     console.log('═══════════════════════════════════════════════════════════');
     
     // Place LIMIT BUY order (maker fee)
@@ -347,7 +359,7 @@ async function enterTrade(signal, state) {
     console.log(`✅ Buy order placed! ID: ${buyOrder.id}`);
     
     // Send Discord alert for trade entry
-    await sendDiscordAlert(`✅ **TRADE EXECUTED!**\n\n💰 Amount: ${amount.toFixed(2)} XRP\n📊 Entry: $${entryPrice.toFixed(5)}\n🎯 Target: $${targetPrice.toFixed(5)} (+1.32%)\n📈 RSI: ${signal.rsi.toFixed(2)}`);
+    await sendDiscordAlert(`✅ **TRADE EXECUTED!**\n\n💰 Amount: ${amount.toFixed(2)} XRP\n📊 Entry: $${entryPrice.toFixed(5)}\n🎯 Target: $${targetPrice.toFixed(5)} (+1.32%)\n📈 RSI: ${signal.rsi.toFixed(2)}\n⚡ EMA8 > EMA3: ${signal.ema8.toFixed(5)} > ${signal.ema3.toFixed(5)}`);
     
     // Wait a moment for buy to potentially fill
     await sleep(2000);
@@ -447,14 +459,15 @@ function sleep(ms) {
 async function main() {
   console.log('\n');
   console.log('═══════════════════════════════════════════════════════════');
-  console.log('🐉 DRAGON EMPIRE HOLDINGS - SCALPING BOT V1.2 🐉');
+  console.log('🐉 DRAGON EMPIRE HOLDINGS - SCALPING BOT V1.3 🐉');
   console.log('═══════════════════════════════════════════════════════════');
   console.log('Strategy: Triple Confirmation + Fixed Target');
   console.log(`Position: $${CONFIG.positionSizeUSD} base${CONFIG.compounding ? ' + compounding profits' : ''}`);
   console.log('Target: 1.32% gross (1% net after fees)');
-  console.log('Entry: RSI < 35 + Price Up + MA8 > MA3');
+  console.log('Entry: RSI < 35 + Price Up + EMA8 > EMA3');
   console.log('Exit: Fixed target (no stop loss)');
   console.log(`Compounding: ${CONFIG.compounding ? 'ON - profits reinvested' : 'OFF - fixed position size'}`);
+  console.log('⚡ NOW USING EMA - FASTER REACTIONS! ⚡');
   console.log('═══════════════════════════════════════════════════════════');
   console.log('🔥 LET IT EAT! 🔥');
   console.log('═══════════════════════════════════════════════════════════\n');
@@ -472,7 +485,7 @@ async function main() {
   }
   
   // Send startup notification to Discord
-  await sendDiscordAlert(`🐉 **DRAGON EMPIRE BOT STARTED**\n\n✅ Status: Online and hunting\n🎯 Waiting for: RSI < 35\n💰 Position: ${state.hasPosition ? 'Active' : 'None'}\n⏰ Time: ${new Date().toISOString()}\n\n🔥 Let it EAT! 🔥`);
+  await sendDiscordAlert(`🐉 **DRAGON EMPIRE BOT V1.3 STARTED**\n\n✅ Status: Online and hunting\n🎯 Waiting for: RSI < 35\n💰 Position: ${state.hasPosition ? 'Active' : 'None'}\n⚡ NOW USING EMA - FASTER!\n⏰ Time: ${new Date().toISOString()}\n\n🔥 Let it EAT! 🔥`);
   
   // Main loop
   while (true) {
