@@ -1,17 +1,11 @@
 {
-  "name": "dragon-empire-scalping-bot",
+  "name": "dragon-empire-bot",
   "version": "1.4.1",
-  "description": "XRP Scalping Bot with RSI + EMA + Floor + Trail",
   "main": "scalping-bot.js",
   "scripts": {
     "start": "node scalping-bot.js"
   },
   "dependencies": {
-    "ccxt": "^4.2.25",
-    "node-fetch": "^2.7.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "ccxt": "^4.2.25"
   }
 }
-
