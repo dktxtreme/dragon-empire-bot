@@ -1,11 +1,10 @@
-
 // Dragon Empire Scalping Bot V1.4.1 - BUG FIXES
 // "RSI + EMA Scalping with Floor + Trail Exit" 🐉
 // CRITICAL FIXES: Uses completed candles only, real-time ticker price, verified AND logic
 
 const ccxt = require('ccxt');
 const fs = require('fs');
-const fetch = require('node-fetch');
+// Node 24+ has native fetch - no import needed!
 
 // ============= CONFIG =============
 const CONFIG = {
@@ -315,3 +314,4 @@ async function main() {
 }
 
 main().catch(console.error);
+
