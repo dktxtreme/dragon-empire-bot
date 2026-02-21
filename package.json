@@ -1,28 +1,17 @@
 {
   "name": "dragon-empire-scalping-bot",
-  "version": "1.0.0",
-  "description": "Dragon Empire Holdings - Scalping Bot V1 - Triple Confirmation Strategy",
-  "main": "scalping-bot.js",
+  "version": "1.4.1",
+  "description": "XRP Scalping Bot with RSI + EMA + Floor + Trail",
+  "main": "index.js",
   "scripts": {
-    "start": "node scalping-bot.js",
-    "test": "node scalping-bot.js"
+    "start": "node index.js"
   },
-  "keywords": [
-    "trading",
-    "crypto",
-    "scalping",
-    "xrp",
-    "kraken",
-    "dragon-empire"
-  ],
-  "author": "Dragon Empire Holdings LLC",
-  "license": "UNLICENSED",
   "dependencies": {
     "ccxt": "^4.2.25",
-    "dotenv": "^16.3.1",
-    "express": "^4.21.2"
+    "node-fetch": "^2.7.0"
   },
   "engines": {
     "node": ">=18.0.0"
   }
 }
+
