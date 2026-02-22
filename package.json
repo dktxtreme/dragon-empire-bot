@@ -1,11 +1,13 @@
 {
   "name": "dragon-empire-bot",
-  "version": "1.4.1",
+  "version": "1.3.3",
   "main": "scalping-bot.js",
   "scripts": {
     "start": "node scalping-bot.js"
   },
   "dependencies": {
-    "ccxt": "^4.2.25"
+    "ccxt": "^4.2.25",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
   }
 }
